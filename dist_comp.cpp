@@ -1,5 +1,5 @@
 /*
-Started off with the example at http://doc.cgal.org/latest/AABB_tree/index.html 
+Started off with the example at http://doc.cgal.org/latest/AABB_tree/index.html
 by Author(s) : Camille Wormser, Pierre Alliez
 */
 
@@ -9,6 +9,7 @@ by Author(s) : Camille Wormser, Pierre Alliez
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
+#include <cfloat>
 
 typedef CGAL::Simple_cartesian<double> K;
 typedef K::FT FT;
@@ -22,39 +23,61 @@ typedef CGAL::AABB_traits<K, Primitive> AABB_triangle_traits;
 typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 
 typedef AABB_triangle_traits::Closest_point ClosestPointToTriangle;
-
+typedef AABB_triangle_traits::Squared_distance SquaredDistanceBetweenPoints;
 
 int main()
 {
+
     Point a(1.0, 0.0, 0.0);
     Point b(0.0, 1.0, 0.0);
     Point c(0.0, 0.0, 1.0);
     Point d(0.0, 0.0, 0.0);
 
     std::list<Triangle> triangles;
+    std::list<Primitive> primitives;
     triangles.push_back(Triangle(a,b,c));
     triangles.push_back(Triangle(a,b,d));
     triangles.push_back(Triangle(a,d,c));
 
     Point point_query(2.0, 2.0, 2.0);
-    Point point_random(999999.0, 999999.0, 999999.0);
-
+    Point point_max(LDBL_MAX, LDBL_MAX, LDBL_MAX);
+    //Assumption: Any query is closer than point_max. Our mesh is not near point_max.
     /*
-    So far so good. I'll need to construct an AABB_tree, but rather than use it's 
-    closest point function, I'll use that of it's component triangle primitives (so
+    So far so good. I'll need to construct an AABB_tree, but rather than use it's
+    closest point function, I'll use that of its component triangle primitives (so
     I can still write the core algorithm).
-    The triangle primitive can either store our triangle internally or reconstruct it on-the-fly.
+    The triangle primitive can either store our triangle internally or reconstruct
+    it on-the-fly, depending on space/lookup tradeoffs.
     */
 
-    // constructs AABB tree
-    Tree tree(triangles.begin(),triangles.end());
-    Primitive p(triangles.begin());
+    ClosestPointToTriangle getClosestPoint;
+    SquaredDistanceBetweenPoints getSquaredDistance;
 
-    ClosestPointToTriangle cp;
-    
-//    Point result = cp(point_query, tree.front(), point_random);
-      Point result = cp(point_query, p, point_random);
-      std::cerr << "------->" << result;
+    Point closestPointOnTriangle; //Not the right place for it, but saves on unnecessary reallocation
+    Primitive p;
+    FT squaredDistance;
+    FT closestPointSquaredDistance = LDBL_MAX;
+    Point closestPointOnMesh;
+    for(std::list<Triangle>::iterator iter = triangles.begin(); iter != triangles.end(); iter++)
+    {
+        p = Primitive(iter);
+        primitives.push_back(p);
+        closestPointOnTriangle = getClosestPoint(point_query, p, point_max);
+        squaredDistance = getSquaredDistance(point_query, closestPointOnTriangle);
+        if (squaredDistance < closestPointSquaredDistance)
+        {
+            closestPointSquaredDistance = squaredDistance;
+            closestPointOnMesh = closestPointOnTriangle;
+        }
+        //We'll use point_max to save CPU cycles retrieving points
+    }
+
+        std::cerr << "------->" << closestPointSquaredDistance <<"------" << closestPointOnMesh << std::endl;
+
+
+
+// constructs AABB tree
+Tree tree(triangles.begin(),triangles.end());
 
 // counts #intersections
 Ray ray_query(a,b);
