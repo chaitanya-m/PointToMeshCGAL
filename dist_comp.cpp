@@ -114,9 +114,9 @@ class ClosestPointQuery
     public:
 
         ClosestPointQuery(TriangleMesh* m);
-
-        // Return closest point on mesh to query point within maxDist
+        //Type primitive unable to support const iterators? Should be looked into, this should ideally be const.
         Point operator() (const Point& queryPoint) const;
+        // Return closest point on mesh to query point within maxDist
 
     private:
         TriangleMesh* triangleMesh;
@@ -132,7 +132,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     PrimitiveMesh primitiveMesh;
     //The triangle primitive can either store our triangle internally or reconstruct it on-the-fly, depending on space/lookup tradeoffs.
 
-    Point point_max(LDBL_MAX, LDBL_MAX, LDBL_MAX);
+    Point maxPoint(LDBL_MAX, LDBL_MAX, LDBL_MAX);
     //Assumption: Any query is closer than point_max. Our mesh is not near point_max.
 
     ClosestPointToTriangle getClosestPoint;
@@ -146,19 +146,19 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     FT closestPointSquaredDistance = LDBL_MAX;
     Point closestPointOnMesh;
 
-    for(std::list<Triangle>::iterator iter = triangleMesh->begin(); iter != triangleMesh->end(); iter++)
+    for(TriangleMesh::iterator iter = triangleMesh->begin(); iter != triangleMesh->end(); iter++)
     {
         p = Primitive(iter);
-
+        //doesn't support const iterators?
         primitiveMesh.push_back(p);
-        closestPointOnTriangle = getClosestPoint(queryPoint, p, point_max);
+        closestPointOnTriangle = getClosestPoint(queryPoint, p, maxPoint);
         squaredDistance = getSquaredDistance(queryPoint, closestPointOnTriangle);
         if (squaredDistance < closestPointSquaredDistance)
         {
             closestPointSquaredDistance = squaredDistance;
             closestPointOnMesh = closestPointOnTriangle;
         }
-        //We'll use point_max to save CPU cycles retrieving points
+        //We'll use point_max to save CPU cycles retrieving points on triangle
     //Store Query-Result pairs for quicker access later
     }
     queryToClosestPointMap.insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
