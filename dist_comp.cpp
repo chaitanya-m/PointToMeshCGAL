@@ -73,7 +73,6 @@ void addTriangleAndEdges(TriangleMesh* triangleMesh, EdgeQueue &edges, const Edg
 
 TriangleMesh* meshGen()
 {
-    std::cerr << "Here";
 
     TriangleMesh* triangleMesh = new TriangleMesh();
     srand(0);   //Define seed for testing...
@@ -103,7 +102,6 @@ TriangleMesh* meshGen()
 
         edges.pop();
     }
-    std::cerr << "Here2";
 
     return triangleMesh;
 }
@@ -116,15 +114,17 @@ class ClosestPointQuery
         ClosestPointQuery(TriangleMesh* m);
         //Type primitive unable to support const iterators? Should be looked into, this should ideally be const.
         Point operator() (const Point& queryPoint) const;
-        // Return closest point on mesh to query point within maxDist
+        // Return closest point on mesh to query point
 
     private:
         TriangleMesh* triangleMesh;
+        std::map<Point, Point>* queryToClosestPointMap;
 };
 
 ClosestPointQuery::ClosestPointQuery(TriangleMesh* m)
 {
     triangleMesh = m;
+    queryToClosestPointMap = new std::map<Point, Point>();
 }
 
 Point ClosestPointQuery::operator() (const Point& queryPoint) const
@@ -137,7 +137,6 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
 
     ClosestPointToTriangle getClosestPoint;
     SquaredDistanceBetweenPoints getSquaredDistance;
-    std::map<Point, Point> queryToClosestPointMap;
     //This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
     //They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
     Point closestPointOnTriangle;
@@ -161,7 +160,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
         //We'll use point_max to save CPU cycles retrieving points on triangle
     //Store Query-Result pairs for quicker access later
     }
-    queryToClosestPointMap.insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
+    queryToClosestPointMap->insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
     return closestPointOnMesh;
 }
 
@@ -197,7 +196,7 @@ bool TestClosestPointQuery::Test1()
     {
         std::cout << "Test 1: Result is valid\n";
         return true;
-        //This should strictly be a floating point comparison within error bounds- the internal 
+        //This should strictly be a floating point comparison within error bounds- the internal
         //implementation for Point may or may not do this
     }
     std::cerr << "Test 1 FAILED";
