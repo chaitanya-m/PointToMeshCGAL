@@ -4,14 +4,20 @@ by Author(s) : Camille Wormser, Pierre Alliez
 */
 
 #include <iostream>
+#include <stdlib.h>
 #include <CGAL/Simple_cartesian.h>
-#include <list>
+#include <queue>
 #include <map>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
 #include <cfloat>
 
+#define vertexMin 100   //better than a static declaration within class in terms of lookup efficiency
+#define vertexMax 5000
+
+#define vertexDistOrigMax 100000 //Max distance of any vertex from origin, allowing for two decimal places
+#define vertexDistDivisor 100   //For floating point values
 typedef CGAL::Simple_cartesian<double> K;
 typedef K::FT FT;
 typedef K::Ray_3 Ray;
@@ -25,21 +31,82 @@ typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 
 typedef AABB_triangle_traits::Closest_point ClosestPointToTriangle;
 typedef AABB_triangle_traits::Squared_distance SquaredDistanceBetweenPoints;
+typedef std::list<Triangle> TriangleMesh;
+typedef std::list<Primitive> PrimitiveMesh;
+typedef std::queue<std::pair<Point, Point> > EdgeQueue;
+typedef std::pair<Point, Point> Edge;
+
+Point randomPoint()
+{
+    double coords[3];
+    for(int j = 0; j < 3; j ++)
+    {
+        coords[j] = (rand() % vertexDistOrigMax) / vertexDistDivisor;
+    }
+    return Point(coords[0], coords[1], coords[2]);
+
+}
+
+
+TriangleMesh meshGen()
+{
+    srand(0);   //Define seed for testing...
+    //Let's generate a random mesh with vertexMin - vertexMax vertices
+    TriangleMesh triangleMesh;
+
+    int numVertices = rand() % vertexMax + vertexMin;
+    std::vector<Point> vertices(numVertices); //Fixed backing data structure size. Save on address lookups.
+    EdgeQueue edges;
+
+    //Create a vertex pair first (an edge)
+    Point p[2];
+
+    for(int i = 0; i < 2; i ++)
+    {
+        p[i] = randomPoint();
+        vertices.push_back(p[i]);
+    }
+    edges.push(Edge(p[0], p[1]));
+    //create the triangle mesh
+    for(int i = 0; i < numVertices - 2; i++) // we've just created 2 vertices
+    {
+        //Pick the first edge (vertex pair). Create two triangles off it, then retire it 
+        Edge currentEdge = edges.front();
+        Point p1 = randomPoint();        Point p2 = randomPoint();
+        Point a = currentEdge.first;        Point b = currentEdge.second;
+
+        Triangle t1(a, b, p1);        Triangle t2(a, b, p2);
+
+        edges.push(Edge(a, p1));        edges.push(Edge(b, p1));
+        edges.push(Edge(a, p2));        edges.push(Edge(b, p2));
+
+        edges.pop();
+        triangleMesh.push_back(t1);        triangleMesh.push_back(t2);
+    }
+    return triangleMesh;
+}
+
 
 int main()
 {
 
+    //Generate mesh
+    //Generate queries
+    //query mesh
+    //print results
+    TriangleMesh triangleMesh = meshGen();
+    PrimitiveMesh primitiveMesh;
+
+/*
     Point a(1.0, 0.0, 0.0);
     Point b(0.0, 1.0, 0.0);
     Point c(0.0, 0.0, 1.0);
     Point d(0.0, 0.0, 0.0);
 
-    std::list<Triangle> mesh;
-    std::list<Primitive> primitives;
-    mesh.push_back(Triangle(a,b,c));
-    mesh.push_back(Triangle(a,b,d));
-    mesh.push_back(Triangle(a,d,c));
-
+    triangleMesh.push_back(Triangle(a,b,c));
+    triangleMesh.push_back(Triangle(a,b,d));
+    triangleMesh.push_back(Triangle(a,d,c));
+*/
     Point queryPoint(2.0, 2.0, 2.0);
     Point point_max(LDBL_MAX, LDBL_MAX, LDBL_MAX);
     //Assumption: Any query is closer than point_max. Our mesh is not near point_max.
@@ -53,7 +120,7 @@ int main()
 
     ClosestPointToTriangle getClosestPoint;
     SquaredDistanceBetweenPoints getSquaredDistance;
-    std::map<Point, Point> queryToClosestPointMap; 
+    std::map<Point, Point> queryToClosestPointMap;
 //This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
 //They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
     Point closestPointOnTriangle; //Not the right place for these declarations, but saves on unnecessary reallocation in loop
@@ -62,10 +129,11 @@ int main()
     FT closestPointSquaredDistance = LDBL_MAX;
     Point closestPointOnMesh;
 
-    for(std::list<Triangle>::iterator iter = mesh.begin(); iter != mesh.end(); iter++)
+    for(std::list<Triangle>::iterator iter = triangleMesh.begin(); iter != triangleMesh.end(); iter++)
     {
         p = Primitive(iter);
-        primitives.push_back(p);
+
+        primitiveMesh.push_back(p);
         closestPointOnTriangle = getClosestPoint(queryPoint, p, point_max);
         squaredDistance = getSquaredDistance(queryPoint, closestPointOnTriangle);
         if (squaredDistance < closestPointSquaredDistance)
@@ -83,12 +151,8 @@ int main()
 
 
 // constructs AABB tree
-Tree tree(mesh.begin(),mesh.end());
+Tree tree(triangleMesh.begin(), triangleMesh.end());
 
-// counts #intersections
-Ray ray_query(a,b);
-std::cout << tree.number_of_intersected_primitives(ray_query)
-<< " AABB_tree intersections(s) with ray query" << std::endl;
 // compute closest point and squared distance
 Point closest_point = tree.closest_point(queryPoint);
 std::cerr << "AABB_tree closest point is: " << closest_point << std::endl;
