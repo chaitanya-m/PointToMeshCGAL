@@ -17,7 +17,7 @@ by Author(s) : Camille Wormser, Pierre Alliez
 #define vertexMax 5000
 
 #define vertexDistOrigMax 100000 //Max distance of any vertex from origin, allowing for two decimal places
-#define vertexDistDivisor 100   //For floating point values
+#define vertexDistDivisor 100.0   //For floating point values
 typedef CGAL::Simple_cartesian<double> K;
 typedef K::FT FT;
 typedef K::Ray_3 Ray;
@@ -36,6 +36,8 @@ typedef std::list<Primitive> PrimitiveMesh;
 typedef std::queue<std::pair<Point, Point> > EdgeQueue;
 typedef std::pair<Point, Point> Edge;
 
+
+
 Point randomPoint()
 {
     double coords[3];
@@ -48,8 +50,8 @@ Point randomPoint()
 }
 
 
-void addTriangleAndEdges(TriangleMesh &triangleMesh, EdgeQueue &edges, const Edge &currentEdge)
-{ 
+void addTriangleAndEdges(TriangleMesh* triangleMesh, EdgeQueue &edges, const Edge &currentEdge)
+{
     bool triangleIsDegenerate = true;
     Point a = currentEdge.first;
     Point b = currentEdge.second;
@@ -64,16 +66,18 @@ void addTriangleAndEdges(TriangleMesh &triangleMesh, EdgeQueue &edges, const Edg
 
     edges.push(Edge(a, p));
     edges.push(Edge(b, p));
-    triangleMesh.push_back(t);
+    triangleMesh->push_back(t);
 
 }
 
 
-TriangleMesh meshGen()
+TriangleMesh* meshGen()
 {
+    std::cerr << "Here";
+
+    TriangleMesh* triangleMesh = new TriangleMesh();
     srand(0);   //Define seed for testing...
-    //Let's generate a random mesh with vertexMin - vertexMax vertices
-    TriangleMesh triangleMesh;
+    //Generate a random mesh with vertexMin - vertexMax vertices
 
     int numVertices = rand() % vertexMax + vertexMin;
     std::vector<Point> vertices(numVertices); //Fixed backing data structure size. Save on address lookups.
@@ -98,55 +102,51 @@ TriangleMesh meshGen()
         addTriangleAndEdges(triangleMesh, edges, currentEdge);
 
         edges.pop();
-
     }
+    std::cerr << "Here2";
+
     return triangleMesh;
 }
 
 
-int main()
+class ClosestPointQuery
 {
+    public:
 
-    //Generate mesh
-    //Generate queries
-    //query mesh
-    //print results
-    TriangleMesh triangleMesh = meshGen();
+        ClosestPointQuery(TriangleMesh* m);
+
+        // Return closest point on mesh to query point within maxDist
+        Point operator() (const Point& queryPoint) const;
+
+    private:
+        TriangleMesh* triangleMesh;
+};
+
+ClosestPointQuery::ClosestPointQuery(TriangleMesh* m)
+{
+    triangleMesh = m;
+}
+
+Point ClosestPointQuery::operator() (const Point& queryPoint) const
+{
     PrimitiveMesh primitiveMesh;
+    //The triangle primitive can either store our triangle internally or reconstruct it on-the-fly, depending on space/lookup tradeoffs.
 
-/*
-    Point a(1.0, 0.0, 0.0);
-    Point b(0.0, 1.0, 0.0);
-    Point c(0.0, 0.0, 1.0);
-    Point d(0.0, 0.0, 0.0);
-
-    triangleMesh.push_back(Triangle(a,b,c));
-    triangleMesh.push_back(Triangle(a,b,d));
-    triangleMesh.push_back(Triangle(a,d,c));
-*/
-    Point queryPoint(2.0, 2.0, 2.0);
     Point point_max(LDBL_MAX, LDBL_MAX, LDBL_MAX);
     //Assumption: Any query is closer than point_max. Our mesh is not near point_max.
-    /*
-    So far so good. I'll need to construct an AABB_tree, but rather than use it's
-    closest point function, I'll use that of its component triangle primitives (so
-    I can still write the core algorithm).
-    The triangle primitive can either store our triangle internally or reconstruct
-    it on-the-fly, depending on space/lookup tradeoffs.
-    */
 
     ClosestPointToTriangle getClosestPoint;
     SquaredDistanceBetweenPoints getSquaredDistance;
     std::map<Point, Point> queryToClosestPointMap;
-//This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
-//They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
-    Point closestPointOnTriangle; //Not the right place for these declarations, but saves on unnecessary reallocation in loop
+    //This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
+    //They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
+    Point closestPointOnTriangle;
     Primitive p;
     FT squaredDistance;
     FT closestPointSquaredDistance = LDBL_MAX;
     Point closestPointOnMesh;
 
-    for(std::list<Triangle>::iterator iter = triangleMesh.begin(); iter != triangleMesh.end(); iter++)
+    for(std::list<Triangle>::iterator iter = triangleMesh->begin(); iter != triangleMesh->end(); iter++)
     {
         p = Primitive(iter);
 
@@ -163,10 +163,27 @@ int main()
     }
     queryToClosestPointMap.insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
 
-        std::cerr << "------->" << closestPointSquaredDistance <<"------" << closestPointOnMesh << std::endl;
+    std::cerr << "------->" << closestPointSquaredDistance <<"------" << closestPointOnMesh << std::endl;
+
+    return closestPointOnMesh;
+}
 
 
 
+
+
+int main()
+{
+
+    //Generate mesh, generate queries, query mesh, print results
+    ClosestPointQuery query(meshGen());
+
+    Point queryPoint(2.0, 2.0, 2.0);
+    query(queryPoint);
+
+
+
+/*
 // constructs AABB tree
 Tree tree(triangleMesh.begin(), triangleMesh.end());
 
@@ -176,5 +193,6 @@ std::cerr << "AABB_tree closest point is: " << closest_point << std::endl;
 FT sqd = tree.squared_distance(queryPoint);
 std::cout << "AABB_tree squared distance: " << sqd << std::endl;
 return EXIT_SUCCESS;
+*/
 }
 
