@@ -129,6 +129,14 @@ ClosestPointQuery::ClosestPointQuery(TriangleMesh* m)
 
 Point ClosestPointQuery::operator() (const Point& queryPoint) const
 {
+
+    std::map<Point, Point>::iterator mapIter = queryToClosestPointMap->find(queryPoint);
+    if (mapIter != queryToClosestPointMap->end())
+    {
+//        return (*queryToClosestPointMap)[queryPoint];
+        return mapIter->second;
+    }
+
     PrimitiveMesh primitiveMesh;
     //The triangle primitive can either store our triangle internally or reconstruct it on-the-fly, depending on space/lookup tradeoffs.
 
