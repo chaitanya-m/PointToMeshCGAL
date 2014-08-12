@@ -4,8 +4,9 @@ by Author(s) : Camille Wormser, Pierre Alliez
 */
 
 #include <iostream>
-#include <list>
 #include <CGAL/Simple_cartesian.h>
+#include <list>
+#include <map>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
@@ -33,13 +34,13 @@ int main()
     Point c(0.0, 0.0, 1.0);
     Point d(0.0, 0.0, 0.0);
 
-    std::list<Triangle> triangles;
+    std::list<Triangle> mesh;
     std::list<Primitive> primitives;
-    triangles.push_back(Triangle(a,b,c));
-    triangles.push_back(Triangle(a,b,d));
-    triangles.push_back(Triangle(a,d,c));
+    mesh.push_back(Triangle(a,b,c));
+    mesh.push_back(Triangle(a,b,d));
+    mesh.push_back(Triangle(a,d,c));
 
-    Point point_query(2.0, 2.0, 2.0);
+    Point queryPoint(2.0, 2.0, 2.0);
     Point point_max(LDBL_MAX, LDBL_MAX, LDBL_MAX);
     //Assumption: Any query is closer than point_max. Our mesh is not near point_max.
     /*
@@ -52,41 +53,46 @@ int main()
 
     ClosestPointToTriangle getClosestPoint;
     SquaredDistanceBetweenPoints getSquaredDistance;
-
-    Point closestPointOnTriangle; //Not the right place for it, but saves on unnecessary reallocation
+    std::map<Point, Point> queryToClosestPointMap; 
+//This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
+//They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
+    Point closestPointOnTriangle; //Not the right place for these declarations, but saves on unnecessary reallocation in loop
     Primitive p;
     FT squaredDistance;
     FT closestPointSquaredDistance = LDBL_MAX;
     Point closestPointOnMesh;
-    for(std::list<Triangle>::iterator iter = triangles.begin(); iter != triangles.end(); iter++)
+
+    for(std::list<Triangle>::iterator iter = mesh.begin(); iter != mesh.end(); iter++)
     {
         p = Primitive(iter);
         primitives.push_back(p);
-        closestPointOnTriangle = getClosestPoint(point_query, p, point_max);
-        squaredDistance = getSquaredDistance(point_query, closestPointOnTriangle);
+        closestPointOnTriangle = getClosestPoint(queryPoint, p, point_max);
+        squaredDistance = getSquaredDistance(queryPoint, closestPointOnTriangle);
         if (squaredDistance < closestPointSquaredDistance)
         {
             closestPointSquaredDistance = squaredDistance;
             closestPointOnMesh = closestPointOnTriangle;
         }
         //We'll use point_max to save CPU cycles retrieving points
+    //Store Query-Result pairs for quicker access later
     }
+    queryToClosestPointMap.insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
 
         std::cerr << "------->" << closestPointSquaredDistance <<"------" << closestPointOnMesh << std::endl;
 
 
 
 // constructs AABB tree
-Tree tree(triangles.begin(),triangles.end());
+Tree tree(mesh.begin(),mesh.end());
 
 // counts #intersections
 Ray ray_query(a,b);
 std::cout << tree.number_of_intersected_primitives(ray_query)
 << " AABB_tree intersections(s) with ray query" << std::endl;
 // compute closest point and squared distance
-Point closest_point = tree.closest_point(point_query);
+Point closest_point = tree.closest_point(queryPoint);
 std::cerr << "AABB_tree closest point is: " << closest_point << std::endl;
-FT sqd = tree.squared_distance(point_query);
+FT sqd = tree.squared_distance(queryPoint);
 std::cout << "AABB_tree squared distance: " << sqd << std::endl;
 return EXIT_SUCCESS;
 }
