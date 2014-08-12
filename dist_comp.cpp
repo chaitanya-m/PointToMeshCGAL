@@ -48,6 +48,27 @@ Point randomPoint()
 }
 
 
+void addTriangleAndEdges(TriangleMesh &triangleMesh, EdgeQueue &edges, const Edge &currentEdge)
+{ 
+    bool triangleIsDegenerate = true;
+    Point a = currentEdge.first;
+    Point b = currentEdge.second;
+    Point p = randomPoint();
+    Triangle t;
+
+    while(triangleIsDegenerate) // Three Collinear points
+    {
+        t = Triangle(a, b, p);
+        triangleIsDegenerate = t.is_degenerate();
+    }
+
+    edges.push(Edge(a, p));
+    edges.push(Edge(b, p));
+    triangleMesh.push_back(t);
+
+}
+
+
 TriangleMesh meshGen()
 {
     srand(0);   //Define seed for testing...
@@ -72,16 +93,12 @@ TriangleMesh meshGen()
     {
         //Pick the first edge (vertex pair). Create two triangles off it, then retire it 
         Edge currentEdge = edges.front();
-        Point p1 = randomPoint();        Point p2 = randomPoint();
-        Point a = currentEdge.first;        Point b = currentEdge.second;
 
-        Triangle t1(a, b, p1);        Triangle t2(a, b, p2);
-
-        edges.push(Edge(a, p1));        edges.push(Edge(b, p1));
-        edges.push(Edge(a, p2));        edges.push(Edge(b, p2));
+        addTriangleAndEdges(triangleMesh, edges, currentEdge);
+        addTriangleAndEdges(triangleMesh, edges, currentEdge);
 
         edges.pop();
-        triangleMesh.push_back(t1);        triangleMesh.push_back(t2);
+
     }
     return triangleMesh;
 }
