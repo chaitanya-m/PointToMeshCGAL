@@ -162,37 +162,51 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     //Store Query-Result pairs for quicker access later
     }
     queryToClosestPointMap.insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
-
-    std::cerr << "------->" << closestPointSquaredDistance <<"------" << closestPointOnMesh << std::endl;
-
     return closestPointOnMesh;
 }
 
+class TestClosestPointQuery
+{
+    public:
+        bool Test1();
+
+    private:
+        TriangleMesh* triangleMesh;
+};
+
+bool TestClosestPointQuery::Test1()
+{
+
+    //Generate mesh, generate queries, query mesh, get results
+    TriangleMesh* m = meshGen();
+    ClosestPointQuery query(m);
+
+    Point queryPoint(2.0, 2.0, 2.0);
+    Point result = query(queryPoint);
 
 
+    // constructs AABB tree
+    Tree tree(m->begin(), m->end());
+    // compute closest point and squared distance
+    Point expectedResult = tree.closest_point(queryPoint);
 
+    std::cout << "Computed closest point is: " << result << std::endl;
+    std::cout << "Expected closest point is: " << expectedResult << std::endl;
+
+    if (result == expectedResult)
+    {
+        std::cout << "Test 1: Result is valid\n";
+        return true;
+        //This should strictly be a floating point comparison within error bounds- the internal 
+        //implementation for Point may or may not do this
+    }
+    std::cerr << "Test 1 FAILED";
+    return false;
+}
 
 int main()
 {
-
-    //Generate mesh, generate queries, query mesh, print results
-    ClosestPointQuery query(meshGen());
-
-    Point queryPoint(2.0, 2.0, 2.0);
-    query(queryPoint);
-
-
-
-/*
-// constructs AABB tree
-Tree tree(triangleMesh.begin(), triangleMesh.end());
-
-// compute closest point and squared distance
-Point closest_point = tree.closest_point(queryPoint);
-std::cerr << "AABB_tree closest point is: " << closest_point << std::endl;
-FT sqd = tree.squared_distance(queryPoint);
-std::cout << "AABB_tree squared distance: " << sqd << std::endl;
-return EXIT_SUCCESS;
-*/
+    TestClosestPointQuery testSuite;
+    testSuite.Test1();
 }
 
