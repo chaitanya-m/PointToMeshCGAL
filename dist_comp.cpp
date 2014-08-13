@@ -13,11 +13,9 @@ by Author(s) : Camille Wormser, Pierre Alliez
 #include <CGAL/AABB_triangle_primitive.h>
 #include <cfloat>
 
-#define vertexMin 100   //better than a static declaration within class in terms of lookup efficiency
+#define vertexMin 100   //better than a tatic declaration within class in terms of lookup efficiency
 #define vertexMax 5000
 
-#define vertexDistOrigMax 100000 //Max distance of any vertex from origin, allowing for two decimal places
-#define vertexDistDivisor 100.0   //For floating point values
 typedef CGAL::Simple_cartesian<double> K;
 typedef K::FT FT;
 typedef K::Ray_3 Ray;
@@ -31,14 +29,33 @@ typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 
 typedef AABB_triangle_traits::Closest_point ClosestPointToTriangle;
 typedef AABB_triangle_traits::Squared_distance SquaredDistanceBetweenPoints;
-typedef std::list<Triangle> TriangleMesh;
-typedef std::list<Primitive> PrimitiveMesh;
-typedef std::queue<std::pair<Point, Point> > EdgeQueue;
 typedef std::pair<Point, Point> Edge;
+typedef std::list<Triangle> Triangles;
+typedef std::list<Primitive> Primitives;
+typedef std::queue<std::pair<Point, Point> > EdgeQueue;
 
 
+class TriangleMesh
+{
+    public:
+        TriangleMesh();
+        static void addTriangleAndEdges(Triangles* triangles, EdgeQueue &edges, const Edge &currentEdge);
+        Triangles* getTriangles();
+    private:
+        Triangles* triangles;
+        static const int vertexDistOrigMax = 100000; //Max distance of any vertex from origin, allowing for two decimal places
+        static const double vertexDistDivisor = 100.0; //For floating point values
+        static Point randomPoint();
+};
 
-Point randomPoint()
+
+Triangles* TriangleMesh::getTriangles()
+{
+    return triangles;
+}
+
+
+Point TriangleMesh::randomPoint()
 {
     double coords[3];
     for(int j = 0; j < 3; j ++)
@@ -50,7 +67,7 @@ Point randomPoint()
 }
 
 
-void addTriangleAndEdges(TriangleMesh* triangleMesh, EdgeQueue &edges, const Edge &currentEdge)
+void TriangleMesh::addTriangleAndEdges(Triangles* triangles, EdgeQueue &edges, const Edge &currentEdge)
 {
     bool triangleIsDegenerate = true;
     Point a = currentEdge.first;
@@ -66,15 +83,15 @@ void addTriangleAndEdges(TriangleMesh* triangleMesh, EdgeQueue &edges, const Edg
 
     edges.push(Edge(a, p));
     edges.push(Edge(b, p));
-    triangleMesh->push_back(t);
+    triangles->push_back(t);
 
 }
 
 
-TriangleMesh* meshGen()
+TriangleMesh::TriangleMesh()
 {
 
-    TriangleMesh* triangleMesh = new TriangleMesh();
+    triangles = new Triangles();
     srand(0);   //Define seed for testing...
     //Generate a random mesh with vertexMin - vertexMax vertices
 
@@ -97,13 +114,12 @@ TriangleMesh* meshGen()
         //Pick the first edge (vertex pair). Create two triangles off it, then retire it 
         Edge currentEdge = edges.front();
 
-        addTriangleAndEdges(triangleMesh, edges, currentEdge);
-        addTriangleAndEdges(triangleMesh, edges, currentEdge);
+        TriangleMesh::addTriangleAndEdges(triangles, edges, currentEdge);
+        TriangleMesh::addTriangleAndEdges(triangles, edges, currentEdge);
 
         edges.pop();
     }
 
-    return triangleMesh;
 }
 
 
@@ -111,21 +127,25 @@ class ClosestPointQuery
 {
     public:
 
-        ClosestPointQuery(TriangleMesh* m);
+        ClosestPointQuery(TriangleMesh& m);
         //Type primitive unable to support const iterators? Should be looked into, this should ideally be const.
         Point operator() (const Point& queryPoint) const;
         // Return closest point on mesh to query point
 
     private:
         TriangleMesh* triangleMesh;
+        Triangles* triangles;
         std::map<Point, Point>* queryToClosestPointMap;
 };
 
-ClosestPointQuery::ClosestPointQuery(TriangleMesh* m)
+
+ClosestPointQuery::ClosestPointQuery(TriangleMesh& m)
 {
-    triangleMesh = m;
+    triangleMesh = &m;
+    triangles = m.getTriangles();
     queryToClosestPointMap = new std::map<Point, Point>();
 }
+
 
 Point ClosestPointQuery::operator() (const Point& queryPoint) const
 {
@@ -137,7 +157,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
         return mapIter->second;
     }
 
-    PrimitiveMesh primitiveMesh;
+    Primitives primitives;
     //The triangle primitive can either store our triangle internally or reconstruct it on-the-fly, depending on space/lookup tradeoffs.
 
     Point maxPoint(LDBL_MAX, LDBL_MAX, LDBL_MAX);
@@ -153,11 +173,11 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     FT closestPointSquaredDistance = LDBL_MAX;
     Point closestPointOnMesh;
 
-    for(TriangleMesh::iterator iter = triangleMesh->begin(); iter != triangleMesh->end(); iter++)
+    for(Triangles::iterator iter = triangles->begin(); iter != triangles->end(); iter++)
     {
         p = Primitive(iter);
         //doesn't support const iterators?
-        primitiveMesh.push_back(p);
+        primitives.push_back(p);
         closestPointOnTriangle = getClosestPoint(queryPoint, p, maxPoint);
         squaredDistance = getSquaredDistance(queryPoint, closestPointOnTriangle);
         if (squaredDistance < closestPointSquaredDistance)
@@ -172,20 +192,22 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     return closestPointOnMesh;
 }
 
+
 class TestClosestPointQuery
 {
     public:
         bool Test1();
 
     private:
-        TriangleMesh* triangleMesh;
+        TriangleMesh triangleMesh;
 };
+
 
 bool TestClosestPointQuery::Test1()
 {
 
     //Generate mesh, generate queries, query mesh, get results
-    TriangleMesh* m = meshGen();
+    TriangleMesh m = TriangleMesh();
     ClosestPointQuery query(m);
 
     Point queryPoint(2.0, 2.0, 2.0);
@@ -193,7 +215,8 @@ bool TestClosestPointQuery::Test1()
 
 
     // constructs AABB tree
-    Tree tree(m->begin(), m->end());
+    Triangles *triangles = m.getTriangles();
+    Tree tree(triangles->begin(), triangles->end());
     // compute closest point and squared distance
     Point expectedResult = tree.closest_point(queryPoint);
 
@@ -210,6 +233,7 @@ bool TestClosestPointQuery::Test1()
     std::cerr << "Test 1 FAILED";
     return false;
 }
+
 
 int main()
 {
