@@ -13,7 +13,7 @@ class TriangleMesh
     public:
         TriangleMesh();
         static void addTriangleAndEdges(Triangles* triangles, EdgeQueue &edges, const Edge &currentEdge);
-        Triangles* getTriangles();
+        Triangles* getTriangles(); //tried to make this const but ran into issues with CGAL Primitives
     private:
         Triangles* triangles;
         static const int vertexDistOrigMax = 100000;   //Max distance of any vertex from origin, allowing for two decimal places
