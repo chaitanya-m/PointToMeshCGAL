@@ -13,7 +13,7 @@ by Author(s) : Camille Wormser, Pierre Alliez
 #include <CGAL/AABB_triangle_primitive.h>
 #include <cfloat>
 
-#define vertexMin 100   //better than a tatic declaration within class in terms of lookup efficiency
+#define vertexMin 100   //better than a static declaration within class in terms of lookup efficiency
 #define vertexMax 5000
 
 typedef CGAL::Simple_cartesian<double> K;
@@ -43,7 +43,7 @@ class TriangleMesh
         Triangles* getTriangles();
     private:
         Triangles* triangles;
-        static const int vertexDistOrigMax = 100000; //Max distance of any vertex from origin, allowing for two decimal places
+        static const int vertexDistOrigMax = 100000;   //Max distance of any vertex from origin, allowing for two decimal places
         static const double vertexDistDivisor = 100.0; //For floating point values
         static Point randomPoint();
 };
