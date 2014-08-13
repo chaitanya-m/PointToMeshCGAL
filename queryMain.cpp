@@ -1,6 +1,5 @@
 
 
-#include "ClosestPointQuery.h"
 #include "TestSuite.h"
 
 int main()
