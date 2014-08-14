@@ -1,4 +1,50 @@
-/*
+Solution to: Find the closest point on a mesh to a given query point.
+
+I used CGAL's (cgal.org) Point_3, Triangle_3, AABB_TrianglePrimitive, and other types provided by the library, primarily because I thought it would be more 
+efficient than writing a function to compute distance to a 3-space triangle (edges, face or vertex).
+
+I didn't find an easy way to prune triangles from the search when looking for the closest point on a mesh from a query point. 
+Accordingly, I didn't use an ordered container for storing triangles. I did use an ordered container for storing query-result pairs.
+
+There are some limitations, which may be fixed on the release branch. Behaviour is untested or undefined for some cases, such as querying a point on the mesh.
+
+I've left my raw 'process' notes attached below.
+
+I didn't take into account the part in the sample interface that mentioned "within a given radius". I wasn't sure whether to abort the search if no point was 
+found within the given radius, and didn't solve for it or add it to my interface.
+
+Initial development was done on dev/scratch. It would normally have gone on to a mainstream feature branch before hitting a release branch, but I skipped that bit. 
+I squashed all my commits onto a release branch when I was reasonably satisfied with my solution and believed the pace of modification would be restricted.
+
+One of the tests is designed to run in debug configurations only, using a function in the interface that is also only available in debug configuration.
+The first test compares my results with those from CGAL as in the example by Wormser/Alliez and checks that they match.
+
+CGAL 4.4 needs to be installed and on the path. Alternatively, 
+
+I had some issues with const-correctness which are not fully resolved at this stage. It turns out some CGAL functions require non-const iterators.
+I was trying to pass an iterator to the CGAL function that converts Triangle_3 objects to primitives.
+ 
+I tried to write an iterator to "track" my const iterator, but that didn't quite work as expected. This is something that needs patching eventually, 
+hopefully when the corresponding CGAL function has a version that can accept a const-iterator argument.
+
+The code was written on a Linux box (Ubuntu 13.04).
+
+The CGAL headers and library need to be on the path. Alternatively, use something like:
+
+cgal_create_CMakeLists -s executable 
+cmake -DCGAL_DIR=$HOME/CGAL-4.4 . 
+make
+
+Where CGAL-4.4 is the folder containing the headers and libraries.
+Which is in the CGAL documentation at http://doc.cgal.org/latest/Manual/installation.html.
+
+
+
+
+
+*************************************************************************************************************************************************
+
+Development Notes
 
 ================================================================================
 The question: 
@@ -10,23 +56,20 @@ Efficiency:
 For either problem, I can think of corner cases that would force us 
 to evaluate distance to every polygon in the mesh. 
 
-(Short of writing a bounding-box framework...)
 ================================================================================
 
 Started off with the example at http://doc.cgal.org/latest/AABB_tree/index.html 
 by Author(s) : Camille Wormser, Pierre Alliez
 
 The example computes the closest point on a mesh consisting of triangles (stored in a list) using CGAL functions. 
-The CGAL example translates the list of trinagles into a tree of Axis-Aligned Bounding-Boxes(AABBs). 
+The CGAL example translates the list of triangles into a tree of Axis-Aligned Bounding-Boxes(AABBs). 
 There are convenient distance functions that compute closest distance.
 
 ================================================================================
 Task 1 would require me not to use such a library function, but to implement the 
 algorithm myself, as this would be the core algorithm.
 
-Task 2 would simply require me to find the closest point to the mesh 
-as efficiently as possible, so I could use this function, as the core algorithm
-would involve evaluating points.
+I have interpreted the question to be Task '1'.
 ================================================================================
 
 
@@ -91,6 +134,7 @@ Their code is kept for comparison, to test how different their results are from 
 
 
 */
+// Author(s) : Camille Wormser, Pierre Alliez
 
 #include <iostream>
 #include <list>
