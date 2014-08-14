@@ -89,7 +89,6 @@ TriangleMesh::TriangleMesh()
 
         TriangleMesh::addTriangleAndEdges(triangles, edges, currentEdge);
         TriangleMesh::addTriangleAndEdges(triangles, edges, currentEdge);
-
         edges.pop();
     }
 

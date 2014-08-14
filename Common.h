@@ -1,16 +1,14 @@
-/*
-Started off with the example at http://doc.cgal.org/latest/AABB_tree/index.html
-by Author(s) : Camille Wormser, Pierre Alliez
-*/
 
 #ifndef COMMON_H
 #define COMMON_H
 
+#define DEBUG
+
 #include <iostream>
 #include <stdlib.h>
-#include <CGAL/Simple_cartesian.h>
 #include <queue>
 #include <map>
+#include <CGAL/Simple_cartesian.h>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>

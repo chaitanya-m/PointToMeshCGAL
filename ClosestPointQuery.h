@@ -11,9 +11,15 @@ class ClosestPointQuery
 
         ClosestPointQuery(TriangleMesh& m);
         //Type primitive unable to support const iterators? Should be looked into, this should ideally be const.
+
         Point operator() (const Point& queryPoint) const;
         // Return closest point on mesh to query point
-
+#ifdef DEBUG
+        inline int getMapSize()     //Should only be used for debugging/testing...
+        {
+            return queryToClosestPointMap->size();
+        }
+#endif
     private:
         TriangleMesh* triangleMesh;
         Triangles* triangles;
@@ -35,9 +41,10 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
     std::map<Point, Point>::iterator mapIter = queryToClosestPointMap->find(queryPoint);
     if (mapIter != queryToClosestPointMap->end())
     {
-//        return (*queryToClosestPointMap)[queryPoint];
         return mapIter->second;
     }
+    //This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
+    //They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
 
     Primitives primitives;
     //The triangle primitive can either store our triangle internally or reconstruct it on-the-fly, depending on space/lookup tradeoffs.
@@ -47,8 +54,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
 
     ClosestPointToTriangle getClosestPoint;
     SquaredDistanceBetweenPoints getSquaredDistance;
-    //This is an O(n) find(). Sorting points by in some arbitrary fashion will make it more efficient (Olog(n))
-    //They are lexicographically sorted by default, as the '>', '<', ==, != comparators are all defined for the Point class.
+
     Point closestPointOnTriangle;
     Primitive p;
     FT squaredDistance;
@@ -57,8 +63,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
 
     for(Triangles::iterator iter = triangles->begin(); iter != triangles->end(); iter++)
     {
-        p = Primitive(iter);
-        //doesn't support const iterators?
+        p = Primitive(iter);        //doesn't support const iterators?
         primitives.push_back(p);
         closestPointOnTriangle = getClosestPoint(queryPoint, p, maxPoint);
         squaredDistance = getSquaredDistance(queryPoint, closestPointOnTriangle);
@@ -67,7 +72,7 @@ Point ClosestPointQuery::operator() (const Point& queryPoint) const
             closestPointSquaredDistance = squaredDistance;
             closestPointOnMesh = closestPointOnTriangle;
         }
-        //We'll use point_max to save CPU cycles retrieving points on triangle
+        //We'll use maxPoint to save CPU cycles retrieving points on triangle
     //Store Query-Result pairs for quicker access later
     }
     queryToClosestPointMap->insert(std::pair<Point, Point>(queryPoint, closestPointOnMesh));
