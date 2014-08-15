@@ -1,0 +1,17 @@
+
+Running Test 1
+Queried point: 2 2 2
+Computed closest point is: 19.52 34.65 49.23
+Expected closest point is: 19.52 34.65 49.23
+Test 1: Result computed matches CGAL AABBTree result
+
+
+Running test 2 
+Queried point: 5000.2 2000.2 2000.3
+Computed closest point is: 983.37 955.13 935.54
+Expected closest point is: 983.37 955.13 935.54
+Test 2: Result computed matches CGAL AABBTree result
+
+Queried point: 5000.2 2000.2 2000.3
+Point previously queried. Result successfully retrieved from table: 983.37 955.13 935.54
+
